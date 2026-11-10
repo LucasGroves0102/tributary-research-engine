@@ -40,8 +40,8 @@ async def probe(client: TributaryClient, company: str) -> dict[str, Any]:
     calls: dict[str, Callable[[], Awaitable[Any]]] = {
         "financials": lambda: client.financials(company_id),
         "filings": lambda: client.filings(company_id),
-        "risk_section": lambda: client.section(company_id, "item_1a"),
-        "mdna_section": lambda: client.section(company_id, "item_7"),
+        "risk_section": lambda: client.section(company_id, "1A"),
+        "mdna_section": lambda: client.section(company_id, "7"),
         "segments": lambda: client.segments(company_id),
         "peers": lambda: client.peers(company_id),
         "earnings": lambda: client.earnings(company_id),

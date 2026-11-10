@@ -1,9 +1,12 @@
 
+import json
+
 import httpx
 import pytest
 
 from research_engine.client import TributaryClient
 from research_engine.contracts import Objective, RunStatus
+from research_engine.demo import load_demo_fixture
 from research_engine.engine import ResearchEngine
 from research_engine.storage import RunStore
 
@@ -25,14 +28,14 @@ async def test_run_creates_verified_evidence_and_private_trace(tmp_path):
     def respond(request):
         paths.append(request.url.path)
         if request.url.path.endswith("/search"):
-            return httpx.Response(200, json={"results": [{"ticker": "NVDA", "company_id": "0001045810"}]})
+            return httpx.Response(200, json={"results": [{"tickers": ["NVDA"], "company_id": "0001045810"}]})
         if request.url.path.endswith("/financials"):
-            return httpx.Response(200, json={"metrics": {"revenue": [FIGURE]}})
-        if request.url.path.endswith("/sections/item_1a"):
-            return httpx.Response(200, json={
-                "accession_no": "0001045810-26-000075", "section_key": "item_1a",
-                "text": "The company faces competition and supply risk.",
-            })
+            return httpx.Response(200, json={"company_id": "0001045810", "rows": [FIGURE]})
+        if request.url.path.endswith("/sections/1A"):
+            return httpx.Response(200, json={"sections": [{
+                "section_key": "1A", "text": "The company faces competition and supply risk.",
+                "citation": {"accession_no": "0001045810-26-000075", "section_key": "1A"},
+            }]})
         return httpx.Response(200, json={"items": []})
 
     store = RunStore(tmp_path / "runs")
@@ -87,12 +90,12 @@ async def test_resume_does_not_repeat_completed_tasks(tmp_path, monkeypatch):
         nonlocal searches, financial_attempts
         if request.url.path.endswith("/search"):
             searches += 1
-            return httpx.Response(200, json={"results": [{"ticker": "NVDA", "company_id": "0001045810"}]})
+            return httpx.Response(200, json={"results": [{"tickers": ["NVDA"], "company_id": "0001045810"}]})
         if request.url.path.endswith("/financials"):
             financial_attempts += 1
             if financial_attempts == 1:
                 raise TimeoutError()
-            return httpx.Response(200, json={"data": [FIGURE]})
+            return httpx.Response(200, json={"company_id": "0001045810", "rows": [FIGURE]})
         return httpx.Response(200, json={"items": []})
 
     store = RunStore(tmp_path / "runs")
@@ -116,7 +119,7 @@ async def test_resume_fails_closed_on_missing_completed_checkpoint(tmp_path):
     def respond(request):
         nonlocal count
         count += 1
-        return httpx.Response(200, json={"results": [{"ticker": "NVDA", "company_id": "0001045810"}]})
+        return httpx.Response(200, json={"results": [{"tickers": ["NVDA"], "company_id": "0001045810"}]})
 
     store = RunStore(tmp_path / "runs")
     async with TributaryClient("token", transport=httpx.MockTransport(respond)) as client:
@@ -130,3 +133,35 @@ async def test_resume_fails_closed_on_missing_completed_checkpoint(tmp_path):
     assert result.status == RunStatus.FAILED
     assert "Checkpoint missing result" in result.errors[-1]
     assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_scenarios_use_server_defaults_and_stay_separate_from_reported_facts(tmp_path):
+    responses = load_demo_fixture()["responses"]
+    posted = []
+
+    def respond(request):
+        path = request.url.path
+        if path.endswith("/model"):
+            posted.append(json.loads(request.content))
+            key = "model_defaults" if len(posted) == 1 else "model_scenarios"
+            return httpx.Response(200, json=responses[key])
+        key = "search" if path.endswith("/search") else path.rsplit("/", 1)[-1].replace("-", "_")
+        return httpx.Response(200, json=responses[key])
+
+    store = RunStore(tmp_path / "runs")
+    async with TributaryClient("token", transport=httpx.MockTransport(respond)) as client:
+        engine = ResearchEngine(client, store)
+        run = await engine.execute(engine.create(Objective("ACME", "Financial summary and scenarios")))
+    assert run.status == RunStatus.COMPLETED
+    assert len(posted) == 2
+    assert posted[0]["assumptions"] == [{"growth": 0.0, "margin": 0.0}] * 3
+    assert posted[1]["assumptions"] == responses["model_defaults"]["cases"]["base"]["defaults"]
+    evidence = store.read_json(run.id, "evidence.json")["evidence"]
+    forecasts = [item for item in evidence if item["kind"] == "model_projection"]
+    assert {item["payload"]["case"] for item in forecasts} == {"bear", "base", "bull"}
+    assert all(item["payload"]["classification"] == "forecast" for item in forecasts)
+    assert all(item["kind"] != "model_projection" for item in evidence[:3])
+    report = (store.directory(run.id) / "report.md").read_text()
+    assert "Model scenarios (forecasts, not reported results)" in report
+    assert "server preview scenarios" in report

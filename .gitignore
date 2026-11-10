@@ -9,4 +9,7 @@ dist/
 build/
 .env
 runs/
+# Local working notes, not published
+TRIBUTARY_CONTEXT.md
+TRIBUTARY_RESEARCH_ENGINE_PLAN.md
 *.sqlite3

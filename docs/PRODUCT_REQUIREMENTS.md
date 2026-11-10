@@ -10,11 +10,12 @@ Given a company and a bounded research objective, the engine must produce an evi
 - Resolve an exact company match, then fetch financials, data notes, and optional filings, filing sections, segments, peers, earnings, and events selected by the objective.
 - Publish only historical financial figures that have a valid value, unit, period, source type, and SEC filing accession. Derived figures without component inputs are marked unverified.
 - Keep user identity in the bearer token. Stop on 401/403. Bound HTTP retries, request time, total run time, and tool calls.
+- For scenario objectives, obtain bear/base/bull projections from Tributary's read-only model endpoint and label them as forecasts, separate from reported figures.
 - Persist owner-only, atomic checkpoints and a metadata-only trace. Do not persist tokens or objective text.
 
 ## Target release contract
 
-The project plan calls for a dependency-aware planner that responds to the objective, narrative evidence with section offsets, peer analysis, server-computed scenarios, verified claims, a complete multi-section memo, and stable trace fixtures for an independent evaluation framework. The current release does not yet meet that target. Live contract validation and an authorized smoke test are required before a production-readiness claim.
+The target design calls for an LLM planner constrained to a validated task schema, interpreted narrative evidence with section offsets, peer analysis, verified claims, a complete multi-section memo, and stable trace fixtures for an independent evaluation framework. The current release does not yet meet that target. Live contract validation and an authorized smoke test are required before a production-readiness claim.
 
 ## Acceptance gates
 

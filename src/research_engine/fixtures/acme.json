@@ -3,26 +3,264 @@
   "notice": "SYNTHETIC DATA. ACME and every figure here are invented for offline testing.",
   "responses": {
     "search": {
-      "results": [{"ticker": "ACME", "name": "Acme Example Corporation", "company_id": "0000000001"}]
+      "results": [
+        {
+          "tickers": [
+            "ACME"
+          ],
+          "name": "Acme Example Corporation",
+          "company_id": "0000000001",
+          "access": [
+            "financials",
+            "filings"
+          ]
+        }
+      ]
     },
     "financials": {
-      "metrics": {
-        "revenue": [
-          {"metric": "revenue", "value": "1200000000", "unit": "USD", "currency": "USD", "period_start": "2026-01-01", "period_end": "2026-03-31", "value_source": "reported", "citation": {"accession_no": "0000000001-26-000001", "form": "10-Q", "filed": "2026-05-01"}},
-          {"metric": "revenue", "value": "1000000000", "unit": "USD", "currency": "USD", "period_start": "2025-10-01", "period_end": "2025-12-31", "value_source": "reported", "citation": {"accession_no": "0000000001-26-000002", "form": "10-K", "filed": "2026-02-01"}}
-        ],
-        "operating_income": [
-          {"metric": "operating_income", "value": "240000000", "unit": "USD", "currency": "USD", "period_start": "2026-01-01", "period_end": "2026-03-31", "value_source": "reported", "citation": {"accession_no": "0000000001-26-000001", "form": "10-Q", "filed": "2026-05-01"}}
-        ]
+      "company_id": "0000000001",
+      "view": "quarter",
+      "basis": "fiscal",
+      "as_of": "2026-11-09T00:00:00Z",
+      "rows": [
+        {
+          "metric": "revenue",
+          "value": "1200000000",
+          "unit": "USD",
+          "period_start": "2026-01-01",
+          "period_end": "2026-03-31",
+          "fiscal_period": "FY2026 Q1",
+          "value_source": "reported",
+          "citation": {
+            "accession_no": "0000000001-26-000001",
+            "form": "10-Q",
+            "filed": "2026-05-01"
+          }
+        },
+        {
+          "metric": "revenue",
+          "value": "1000000000",
+          "unit": "USD",
+          "period_start": "2025-10-01",
+          "period_end": "2025-12-31",
+          "fiscal_period": "FY2025 Q4",
+          "value_source": "reported",
+          "citation": {
+            "accession_no": "0000000001-26-000002",
+            "form": "10-K",
+            "filed": "2026-02-01"
+          }
+        },
+        {
+          "metric": "operating_income",
+          "value": "240000000",
+          "unit": "USD",
+          "period_start": "2026-01-01",
+          "period_end": "2026-03-31",
+          "fiscal_period": "FY2026 Q1",
+          "value_source": "reported",
+          "citation": {
+            "accession_no": "0000000001-26-000001",
+            "form": "10-Q",
+            "filed": "2026-05-01"
+          }
+        }
+      ]
+    },
+    "filings": {
+      "company_id": "0000000001",
+      "filings": [
+        {
+          "accession_no": "0000000001-26-000001",
+          "form": "10-Q"
+        }
+      ]
+    },
+    "risk_section": {
+      "company_id": "0000000001",
+      "sections": [
+        {
+          "section_key": "1A",
+          "text": "Competition and supply risk could affect demand for Acme's products. This is synthetic filing text.",
+          "truncated": false,
+          "citation": {
+            "accession_no": "0000000001-26-000002",
+            "form": "10-K",
+            "filed": "2026-02-01",
+            "section_key": "1A",
+            "char_start": 0,
+            "char_end": 99
+          }
+        }
+      ]
+    },
+    "mdna_section": {
+      "company_id": "0000000001",
+      "sections": [
+        {
+          "section_key": "7",
+          "text": "Revenue growth reflected synthetic demand. This is not a real filing.",
+          "truncated": false,
+          "citation": {
+            "accession_no": "0000000001-26-000002",
+            "form": "10-K",
+            "filed": "2026-02-01",
+            "section_key": "7",
+            "char_start": 0,
+            "char_end": 67
+          }
+        }
+      ]
+    },
+    "segments": {
+      "items": []
+    },
+    "peers": {
+      "items": []
+    },
+    "earnings": {
+      "items": []
+    },
+    "events": {
+      "items": []
+    },
+    "data_notes": {
+      "items": []
+    },
+    "model_defaults": {
+      "company_id": "0000000001",
+      "base_fy": 2025,
+      "currency": "USD",
+      "cases": {
+        "base": {
+          "defaults": [
+            {
+              "growth": 10.0,
+              "margin": 20.0
+            },
+            {
+              "growth": 8.0,
+              "margin": 21.0
+            },
+            {
+              "growth": 6.0,
+              "margin": 22.0
+            }
+          ]
+        }
       }
     },
-    "filings": {"items": [{"accession_no": "0000000001-26-000001", "form": "10-Q"}]},
-    "risk_section": {"accession_no": "0000000001-26-000001", "section_key": "item_1a", "text": "Competition and supply risk could affect demand for Acme's products. This is synthetic filing text."},
-    "mdna_section": {"accession_no": "0000000001-26-000001", "section_key": "item_7", "text": "Revenue growth reflected synthetic demand. This is not a real filing."},
-    "segments": {"items": []},
-    "peers": {"items": []},
-    "earnings": {"items": []},
-    "events": {"items": []},
-    "data_notes": {"items": []}
+    "model_scenarios": {
+      "company_id": "0000000001",
+      "base_fy": 2025,
+      "currency": "USD",
+      "cases": {
+        "bear": {
+          "preview": true,
+          "years": [
+            {
+              "fy": 2026,
+              "inputs": {
+                "growth": 5.0,
+                "margin": 17.0
+              },
+              "revenue": 4200000000,
+              "operating_income": 714000000,
+              "fcf": 571200000
+            },
+            {
+              "fy": 2027,
+              "inputs": {
+                "growth": 3.0,
+                "margin": 18.0
+              },
+              "revenue": 4326000000,
+              "operating_income": 778680000,
+              "fcf": 622944000
+            },
+            {
+              "fy": 2028,
+              "inputs": {
+                "growth": 1.0,
+                "margin": 19.0
+              },
+              "revenue": 4369260000,
+              "operating_income": 830159400,
+              "fcf": 664127520
+            }
+          ]
+        },
+        "base": {
+          "preview": false,
+          "years": [
+            {
+              "fy": 2026,
+              "inputs": {
+                "growth": 10.0,
+                "margin": 20.0
+              },
+              "revenue": 4400000000,
+              "operating_income": 880000000,
+              "fcf": 704000000
+            },
+            {
+              "fy": 2027,
+              "inputs": {
+                "growth": 8.0,
+                "margin": 21.0
+              },
+              "revenue": 4752000000,
+              "operating_income": 997920000,
+              "fcf": 798336000
+            },
+            {
+              "fy": 2028,
+              "inputs": {
+                "growth": 6.0,
+                "margin": 22.0
+              },
+              "revenue": 5037120000,
+              "operating_income": 1108166400,
+              "fcf": 886533120
+            }
+          ]
+        },
+        "bull": {
+          "preview": true,
+          "years": [
+            {
+              "fy": 2026,
+              "inputs": {
+                "growth": 15.0,
+                "margin": 23.0
+              },
+              "revenue": 4600000000,
+              "operating_income": 1058000000,
+              "fcf": 846400000
+            },
+            {
+              "fy": 2027,
+              "inputs": {
+                "growth": 13.0,
+                "margin": 24.0
+              },
+              "revenue": 5198000000,
+              "operating_income": 1247520000,
+              "fcf": 998016000
+            },
+            {
+              "fy": 2028,
+              "inputs": {
+                "growth": 11.0,
+                "margin": 25.0
+              },
+              "revenue": 5769780000,
+              "operating_income": 1442445000,
+              "fcf": 1153956000
+            }
+          ]
+        }
+      }
+    }
   }
 }

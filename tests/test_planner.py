@@ -12,6 +12,7 @@ def test_full_research_objective_selects_relevant_sources():
     assert {task.tool for task in make_plan(objective)} == {
         "search_companies", "financials", "data_notes", "filings", "risk_section",
         "segments", "mdna_section", "earnings", "events", "peers",
+        "model_defaults", "model_scenarios",
     }
     assert "scenarios" in analyze_objective(objective.request)
 

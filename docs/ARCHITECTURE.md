@@ -24,4 +24,4 @@ Filings and API responses are untrusted data. No retrieved text is executed as a
 
 ## Gaps
 
-The actual Query API response contracts have not been inspected from this repository. Live credentials were not present during development. Narrative extraction, server-side model invocation, objective-specific planning, and independent evaluation remain to be implemented after contract validation. See [API_INTEGRATION.md](API_INTEGRATION.md).
+Routes and response shapes were taken from Tributary's public route README and source, not yet confirmed against live responses. Live credentials were not present during development, so no authorized smoke test has run. Server-side model scenarios and keyword-based objective planning are implemented. Narrative extraction, LLM-based planning, peer comparison, parallel task execution, pagination, and independent evaluation remain to be implemented after contract validation. See [API_INTEGRATION.md](API_INTEGRATION.md).

@@ -28,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--objective", required=True)
     run.add_argument("--max-tool-calls", type=int, default=30)
     run.add_argument("--max-duration-seconds", type=int, default=300)
+    run.add_argument("--forecast-years", type=int, default=3)
     run.add_argument("--dry-run", action="store_true")
     resume = commands.add_parser("resume", help="Resume an interrupted run")
     resume.add_argument("run_id")
@@ -39,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     contract.add_argument("--company", required=True)
     demo = commands.add_parser("demo", help="Run a pinned synthetic offline fixture")
     demo.add_argument("--objective", default="Financial summary")
+    demo.add_argument("--forecast-years", type=int, default=3)
     return parser
 
 
@@ -61,6 +63,7 @@ async def _main(args: argparse.Namespace) -> int:
         objective = Objective(
             args.company, args.objective,
             Budget(args.max_tool_calls, args.max_duration_seconds),
+            forecast_years=args.forecast_years,
         )
         plan = make_plan(objective)
         if args.dry_run:
@@ -109,7 +112,8 @@ async def _main(args: argparse.Namespace) -> int:
         async with TributaryClient("fixture-only", "https://fixture.invalid/api/query",
                                    transport=demo_transport()) as client:
             engine = ResearchEngine(client, store)
-            run = engine.create(Objective("ACME", args.objective), data_mode="fixture")
+            run = engine.create(Objective("ACME", args.objective,
+                                          forecast_years=args.forecast_years), data_mode="fixture")
             return await _execute(engine, run)
     token = os.environ.get("TRIBUTARY_TOKEN", "")
     if not token:

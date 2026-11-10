@@ -26,10 +26,16 @@ def demo_transport() -> httpx.MockTransport:
         path = request.url.path
         if path.endswith("/search"):
             key = "search"
-        elif path.endswith("/sections/item_1a"):
+        elif path.endswith("/sections/1A"):
             key = "risk_section"
-        elif path.endswith("/sections/item_7"):
+        elif path.endswith("/sections/7"):
             key = "mdna_section"
+        elif path.endswith("/model"):
+            body = json.loads(request.content)
+            assumptions = body.get("assumptions", [])
+            discovery = all(item.get("growth") == 0 and item.get("margin") == 0
+                            for item in assumptions)
+            key = "model_defaults" if discovery else "model_scenarios"
         else:
             key = path.rsplit("/", 1)[-1].replace("-", "_")
         if key not in responses:

@@ -8,7 +8,8 @@ from .contracts import Objective, Task
 
 ALLOWED_TOOLS = {
     "search_companies", "financials", "filings", "risk_section", "mdna_section",
-    "segments", "peers", "earnings", "events", "data_notes"
+    "segments", "peers", "earnings", "events", "data_notes",
+    "model_defaults", "model_scenarios"
 }
 
 TOPIC_TERMS = {
@@ -47,6 +48,15 @@ def make_plan(objective: Objective) -> list[Task]:
                 description=f"Fetch {name.replace('_', ' ')} from the authorized API",
                 completion_criteria="Response received or optional source marked unavailable",
             ))
+    if "scenarios" in topics:
+        tasks.extend([
+            Task("model_defaults", "model_defaults", ("resolve",), required=False,
+                 description="Read Tributary model defaults without publishing placeholder projections",
+                 completion_criteria="Valid server defaults for the requested forecast years"),
+            Task("model_scenarios", "model_scenarios", ("model_defaults",), required=False,
+                 description="Run server-computed base and preview bear/bull scenarios",
+                 completion_criteria="Three distinct scenario projection series"),
+        ])
     validate_plan(tasks, objective.budget.max_tool_calls)
     return tasks
 

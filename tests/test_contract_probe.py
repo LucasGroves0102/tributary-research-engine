@@ -20,7 +20,7 @@ async def test_probe_stops_on_permission_failure():
     def respond(request):
         paths.append(request.url.path)
         if request.url.path.endswith("/search"):
-            return httpx.Response(200, json={"results": [{"ticker": "NVDA", "company_id": "0001045810"}]})
+            return httpx.Response(200, json={"results": [{"tickers": ["NVDA"], "company_id": "0001045810"}]})
         return httpx.Response(403, json={"detail": "no"})
 
     async with TributaryClient("token", transport=httpx.MockTransport(respond)) as client:

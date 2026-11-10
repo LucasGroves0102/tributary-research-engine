@@ -52,6 +52,7 @@ def financial_evidence(raw: Any, company_id: str) -> tuple[list[Evidence], list[
     evidences: list[Evidence] = []
     findings: list[Finding] = []
     seen: set[str] = set()
+    reporting_currency = raw.get("currency", "USD") if isinstance(raw, dict) else None
     for item, inherited_metric in _objects(raw):
         metric = item.get("metric") or item.get("metric_name") or inherited_metric
         value = item.get("value")
@@ -82,6 +83,8 @@ def financial_evidence(raw: Any, company_id: str) -> tuple[list[Evidence], list[
             reading = reading.get("status") or reading.get("kind")
         if reading in {"not_meaningful", "old", "not_applicable"}:
             continue
+        if item.get("not_meaningful"):
+            continue
         source = item.get("value_source")
         if source not in {"reported", "derived"}:
             continue
@@ -92,18 +95,21 @@ def financial_evidence(raw: Any, company_id: str) -> tuple[list[Evidence], list[
             "metric": metric,
             "value": str(number),
             "unit": unit,
-            "currency": item.get("currency"),
+            "currency": item.get("currency") or reporting_currency,
             "period_start": period_start,
             "period_end": period_end,
-            "fiscal_label": item.get("fiscal_label"),
+            "fiscal_period": item.get("fiscal_period"),
+            "calendar_period": item.get("calendar_period"),
             "value_source": source,
             "citation": {
                 "accession_no": accession,
                 "form": citation.get("form"),
                 "filed": citation.get("filed"),
                 "xbrl_tag": citation.get("xbrl_tag"),
+                "source_accessions": citation.get("source_accessions"),
                 "filing_url": citation.get("filing_url"),
             },
+            "freshness": item.get("freshness"),
             "inputs": item.get("inputs") if source == "derived" else None,
         }
         evidence_id = stable_id("ev", [company_id, payload])
@@ -164,8 +170,8 @@ def verify_findings(evidences: list[Evidence], findings: list[Finding]) -> None:
 
 
 SECTION_TERMS = {
-    "item_1a": re.compile(r"\b(risk|risks|uncertainty|uncertainties|dependence|competition)\b", re.IGNORECASE),
-    "item_7": re.compile(r"\b(revenue|demand|margin|cash flow|growth|segment)\b", re.IGNORECASE),
+    "1A": re.compile(r"\b(risk|risks|uncertainty|uncertainties|dependence|competition)\b", re.IGNORECASE),
+    "7": re.compile(r"\b(revenue|demand|margin|cash flow|growth|segment)\b", re.IGNORECASE),
 }
 
 
@@ -175,13 +181,16 @@ def section_evidence(raw: Any, company_id: str, section_key: str) -> list[Eviden
         raise ValueError("Unsupported section key")
     found: list[Evidence] = []
     for item, _ in _objects(raw):
-        accession = item.get("accession_no")
+        citation = item.get("citation")
+        if not isinstance(citation, dict):
+            continue
+        accession = citation.get("accession_no")
         content = item.get("text") or item.get("content")
         if not isinstance(accession, str) or not ACCESSION.fullmatch(accession):
             continue
         if not isinstance(content, str) or not content.strip():
             continue
-        if item.get("section_key", section_key) != section_key:
+        if item.get("section_key") != section_key or citation.get("section_key") != section_key:
             continue
         digest = hashlib.sha256(content.encode()).hexdigest()
         selected: list[tuple[int, int]] = []
@@ -201,6 +210,16 @@ def section_evidence(raw: Any, company_id: str, section_key: str) -> list[Eviden
                 "char_end": end,
                 "text_sha256": digest,
                 "excerpt": content[start:end],
+                "truncated": item.get("truncated"),
+                "citation": {
+                    "accession_no": accession,
+                    "form": citation.get("form"),
+                    "filed": citation.get("filed"),
+                    "section_key": section_key,
+                    "document_url": citation.get("document_url"),
+                    "char_start": citation.get("char_start"),
+                    "char_end": citation.get("char_end"),
+                },
                 "trust": "untrusted_filing_text",
             }
             found.append(Evidence(

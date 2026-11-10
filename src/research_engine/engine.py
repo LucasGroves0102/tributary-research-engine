@@ -19,6 +19,7 @@ from .contracts import (
     utc_now,
 )
 from .evidence import financial_evidence, section_evidence, verify_findings
+from .model import default_state, discovery_state, model_evidence
 from .planner import analyze_objective, make_plan, validate_plan
 from .storage import RunStore
 
@@ -80,10 +81,15 @@ class ResearchEngine:
             if run.task_status.get(task.id) == TaskStatus.COMPLETED:
                 continue
             if any(run.task_status.get(dep) != TaskStatus.COMPLETED for dep in task.depends_on):
-                run.status = RunStatus.FAILED
-                run.errors.append(f"Task {task.id} dependency failed")
+                if task.required:
+                    run.status = RunStatus.FAILED
+                    run.errors.append(f"Task {task.id} dependency failed")
+                    self._save(run)
+                    return run
+                run.task_status[task.id] = TaskStatus.SKIPPED
+                run.errors.append(f"Optional task {task.id} skipped after dependency failure")
                 self._save(run)
-                return run
+                continue
             if run.tool_calls >= run.objective.budget.max_tool_calls:
                 run.status = RunStatus.BUDGET_EXCEEDED
                 run.errors.append("Tool-call budget exceeded")
@@ -100,7 +106,7 @@ class ResearchEngine:
             started = time.monotonic()
             try:
                 result = await asyncio.wait_for(
-                    self._invoke(task.tool, run), timeout=max(0.1, deadline - time.monotonic())
+                    self._invoke(task.tool, run, results), timeout=max(0.1, deadline - time.monotonic())
                 )
             except TimeoutError:
                 run.status = RunStatus.PAUSED
@@ -148,9 +154,12 @@ class ResearchEngine:
         self._save(run)
         assert run.company_id is not None
         evidence, findings = financial_evidence(results.get("financials"), run.company_id)
-        for task_id, section_key in (("risk_section", "item_1a"), ("mdna_section", "item_7")):
+        for task_id, section_key in (("risk_section", "1A"), ("mdna_section", "7")):
             if task_id in results:
                 evidence.extend(section_evidence(results[task_id], run.company_id, section_key))
+        if "model_scenarios" in results:
+            evidence.extend(model_evidence(results["model_scenarios"], run.company_id,
+                                           run.objective.forecast_years))
         verify_findings(evidence, findings)
         self.store.write_json(run.id, "evidence.json", {
             "schema_version": SCHEMA_VERSION,
@@ -162,7 +171,7 @@ class ResearchEngine:
             "run_id": run.id,
             "findings": [asdict(item) for item in findings],
         })
-        run.unfulfilled = unmet_requirements(run, findings)
+        run.unfulfilled = unmet_requirements(run, evidence, findings)
         self.store.write_report(run.id, compose_report(run, evidence, findings))
         run.status = RunStatus.PARTIAL if run.unfulfilled else RunStatus.COMPLETED
         self._trace(run, "report", "completed", "partial" if run.unfulfilled else "ok",
@@ -177,14 +186,26 @@ class ResearchEngine:
         except FileNotFoundError:
             return {}
 
-    async def _invoke(self, tool: str, run: Run) -> Any:
+    async def _invoke(self, tool: str, run: Run, results: dict[str, Any]) -> Any:
         if tool == "search_companies":
             return await self.client.search_companies(run.objective.company)
         if run.company_id is None:
             raise ValueError("Company must be resolved first")
         if tool in {"risk_section", "mdna_section"}:
             return await self.client.section(run.company_id,
-                                             "item_1a" if tool == "risk_section" else "item_7")
+                                             "1A" if tool == "risk_section" else "7")
+        if tool == "model_defaults":
+            raw = await self.client.model(
+                run.company_id, discovery_state(run.company_id, run.objective.forecast_years)
+            )
+            default_state(raw, run.company_id, run.objective.forecast_years)
+            return raw
+        if tool == "model_scenarios":
+            state = default_state(results["model_defaults"], run.company_id,
+                                  run.objective.forecast_years)
+            raw = await self.client.model(run.company_id, state)
+            model_evidence(raw, run.company_id, run.objective.forecast_years)
+            return raw
         method = getattr(self.client, tool)
         return await method(run.company_id)
 
@@ -245,6 +266,9 @@ def resolve_company_id(raw: Any, query: str) -> str | None:
         except ValueError:
             continue
         names = [candidate.get(key) for key in ("ticker", "symbol", "name", "company_name")]
+        tickers = candidate.get("tickers")
+        if isinstance(tickers, list):
+            names.extend(tickers)
         if any(isinstance(name, str) and name.casefold() == query.casefold() for name in names):
             matches.append(company_id)
     if len(set(matches)) == 1:
@@ -317,17 +341,32 @@ def compose_report(run: Run, evidence: list[Evidence], findings: list[Finding]) 
                          f"{payload['char_start']}–{payload['char_end']}, evidence `{item.id}`:")
             lines.append("")
             lines.append("    " + payload["excerpt"].replace("\n", " ").replace("\r", " "))
+    projections = [item for item in evidence if item.kind == "model_projection"]
+    if projections:
+        lines.extend(["", "## Model scenarios (forecasts, not reported results)", ""])
+        lines.append("Tributary computed these projections from its model defaults. Bear and bull "
+                     "are server preview scenarios; growth and margin are assumptions, not facts.")
+        lines.extend(["", ("| Case | Fiscal year | Revenue | Operating income | Free cash flow | "
+                           "Growth assumption | Margin assumption | Evidence |"),
+                      "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |"])
+        for item in sorted(projections, key=lambda ev: (
+            {"bear": 0, "base": 1, "bull": 2}[ev.payload["case"]], ev.payload["fy"]
+        )):
+            payload = item.payload
+            lines.append(f"| {payload['case']} | {payload['fy']} | "
+                         f"{payload['revenue']} {payload['currency']} | "
+                         f"{payload['operating_income']} {payload['currency']} | "
+                         f"{payload['free_cash_flow']} {payload['currency']} | "
+                         f"{payload['growth_assumption_percent']}% | "
+                         f"{payload['margin_assumption_percent']}% | `{item.id}` |")
     lines.extend(["", "## Research coverage", ""])
-    for name in ("filings", "risk_section", "mdna_section", "segments", "peers", "earnings", "events", "data_notes"):
+    for name in ("filings", "risk_section", "mdna_section", "segments", "peers", "earnings", "events", "data_notes", "model_defaults", "model_scenarios"):
         state = run.task_status.get(name, "not_planned")
         lines.append(f"- {name.replace('_', ' ').title()}: {state}")
     lines.extend(["", "## Limitations and unresolved work", ""])
-    if "scenarios" in run.topics:
-        lines.append("- Bear/base/bull scenarios were requested but not generated: the model "
-                     "request and response contract has not been validated.")
     lines.append("- Filing passages are shown only as source excerpts; no business or risk "
                  "interpretation is asserted without a verified claim-to-source link.")
-    lines.append("- No price, consensus estimate, transcript, valuation, or forecast is inferred from filings.")
+    lines.append("- No price, consensus estimate, transcript, or valuation is inferred from filings.")
     for error in run.errors:
         lines.append(f"- {error}")
     for requirement in run.unfulfilled:
@@ -338,7 +377,7 @@ def compose_report(run: Run, evidence: list[Evidence], findings: list[Finding]) 
     return "\n".join(lines)
 
 
-def unmet_requirements(run: Run, findings: list[Finding]) -> list[str]:
+def unmet_requirements(run: Run, evidence: list[Evidence], findings: list[Finding]) -> list[str]:
     unmet = []
     if not any(item.verification == "verified" for item in findings):
         unmet.append("verified historical financial figures")
@@ -348,10 +387,13 @@ def unmet_requirements(run: Run, findings: list[Finding]) -> list[str]:
         ("peers", "verified peer comparison"),
         ("earnings", "earnings and outlook analysis"),
         ("events", "material-event analysis"),
-        ("scenarios", "bear/base/bull model scenarios"),
     ):
         if topic in run.topics:
             unmet.append(requirement)
+    if "scenarios" in run.topics:
+        cases = {item.payload.get("case") for item in evidence if item.kind == "model_projection"}
+        if not {"bear", "base", "bull"} <= cases:
+            unmet.append("bear/base/bull model scenarios")
     if any(status == TaskStatus.FAILED for status in run.task_status.values()):
         unmet.append("all selected API sources available")
     return unmet

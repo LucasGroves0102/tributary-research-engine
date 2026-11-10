@@ -20,13 +20,14 @@ async def test_filing_prompt_injection_cannot_add_tool_calls(tmp_path):
     def respond(request):
         paths.append(request.url.path)
         if request.url.path.endswith("/search"):
-            return httpx.Response(200, json={"results": [{"ticker": "NVDA", "company_id": "0001045810"}]})
+            return httpx.Response(200, json={"results": [{"tickers": ["NVDA"], "company_id": "0001045810"}]})
         if request.url.path.endswith("/financials"):
-            return httpx.Response(200, json={"data": [FIGURE]})
-        if request.url.path.endswith("/sections/item_1a"):
-            return httpx.Response(200, json={
-                "accession_no": "0001045810-26-000075", "section_key": "item_1a", "text": attack,
-            })
+            return httpx.Response(200, json={"company_id": "0001045810", "rows": [FIGURE]})
+        if request.url.path.endswith("/sections/1A"):
+            return httpx.Response(200, json={"sections": [{
+                "section_key": "1A", "text": attack,
+                "citation": {"accession_no": "0001045810-26-000075", "section_key": "1A"},
+            }]})
         return httpx.Response(200, json={"items": []})
 
     store = RunStore(tmp_path / "runs")
@@ -48,9 +49,9 @@ async def test_optional_source_permission_failure_stops_run(tmp_path):
     def respond(request):
         paths.append(request.url.path)
         if request.url.path.endswith("/search"):
-            return httpx.Response(200, json={"results": [{"ticker": "NVDA", "company_id": "0001045810"}]})
+            return httpx.Response(200, json={"results": [{"tickers": ["NVDA"], "company_id": "0001045810"}]})
         if request.url.path.endswith("/financials"):
-            return httpx.Response(200, json={"data": [FIGURE]})
+            return httpx.Response(200, json={"company_id": "0001045810", "rows": [FIGURE]})
         if request.url.path.endswith("/filings"):
             return httpx.Response(403, json={"detail": "hidden"})
         return httpx.Response(200, json={"items": []})

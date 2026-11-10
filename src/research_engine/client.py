@@ -64,20 +64,25 @@ class TributaryClient:
     async def __aexit__(self, *_: object) -> None:
         await self._http.aclose()
 
-    async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+    async def _request(
+        self, method: str, path: str, params: dict[str, Any] | None = None,
+        body: dict[str, Any] | None = None,
+    ) -> Any:
         if not path.startswith("v1/") or ".." in path or "//" in path:
             raise ValueError("Invalid API path")
+        if method not in {"GET", "POST"}:
+            raise ValueError("Unsupported HTTP method")
         for attempt in range(self.max_retries + 1):
             try:
-                async with self._http.stream("GET", path, params=params) as response:
+                async with self._http.stream(method, path, params=params, json=body) as response:
                     if response.status_code == 200:
-                        body = bytearray()
+                        response_body = bytearray()
                         async for chunk in response.aiter_bytes():
-                            body.extend(chunk)
-                            if len(body) > self.max_response_bytes:
+                            response_body.extend(chunk)
+                            if len(response_body) > self.max_response_bytes:
                                 raise TributaryError("response_too_large", response.status_code)
                         try:
-                            return json.loads(body)
+                            return json.loads(response_body)
                         except ValueError as exc:
                             raise TributaryError("invalid_json", response.status_code) from exc
             except (httpx.TimeoutException, httpx.NetworkError) as exc:
@@ -100,8 +105,11 @@ class TributaryClient:
             raise TributaryError("http_error", response.status_code)
         raise AssertionError("retry loop exhausted")
 
+    async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return await self._request("GET", path, params=params)
+
     async def search_companies(self, query: str) -> Any:
-        return await self._get("v1/companies/search", {"q": query})
+        return await self._get("v1/companies/search", {"q": query, "access": "financials"})
 
     async def financials(self, company_id: str, *, quarters: int = 20) -> Any:
         return await self._get(
@@ -113,9 +121,10 @@ class TributaryClient:
         return await self._get(f"v1/companies/{validate_company_id(company_id)}/filings")
 
     async def section(self, company_id: str, section_key: str) -> Any:
-        if section_key not in {"item_1a", "item_7"}:
+        if section_key not in {"1A", "7"}:
             raise ValueError("Unsupported filing section")
-        return await self._get(f"v1/companies/{validate_company_id(company_id)}/sections/{section_key}")
+        return await self._get(f"v1/companies/{validate_company_id(company_id)}/sections/{section_key}",
+                               {"form": "10-K", "max_chars": 8000})
 
     async def segments(self, company_id: str) -> Any:
         return await self._get(f"v1/companies/{validate_company_id(company_id)}/segments")
@@ -131,6 +140,13 @@ class TributaryClient:
 
     async def data_notes(self, company_id: str) -> Any:
         return await self._get(f"v1/companies/{validate_company_id(company_id)}/data-notes")
+
+    async def model(self, company_id: str, state: dict[str, Any]) -> Any:
+        from .model import validate_model_state
+
+        company_id = validate_company_id(company_id)
+        validate_model_state(state, company_id)
+        return await self._request("POST", f"v1/companies/{company_id}/model", body=state)
 
 
 def validate_company_id(company_id: str) -> str:

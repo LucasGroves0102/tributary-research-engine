@@ -33,6 +33,7 @@ class TaskStatus(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    SKIPPED = "skipped"
 
 
 @dataclass(frozen=True)
@@ -52,12 +53,15 @@ class Objective:
     company: str
     request: str
     budget: Budget = field(default_factory=Budget)
+    forecast_years: int = 3
 
     def __post_init__(self) -> None:
         if not self.company.strip() or len(self.company) > 120:
             raise ValueError("company must contain 1 to 120 characters")
         if not self.request.strip() or len(self.request) > 2000:
             raise ValueError("request must contain 1 to 2000 characters")
+        if isinstance(self.forecast_years, bool) or not 1 <= self.forecast_years <= 10:
+            raise ValueError("forecast_years must be between 1 and 10")
 
 
 @dataclass(frozen=True)
@@ -131,7 +135,8 @@ class Run:
         obj = data["objective"]
         data = dict(data)
         data["objective"] = Objective(
-            company=obj["company"], request=obj["request"], budget=Budget(**obj["budget"])
+            company=obj["company"], request=obj["request"], budget=Budget(**obj["budget"]),
+            forecast_years=obj.get("forecast_years", 3),
         )
         data["plan"] = [Task(
             id=item["id"], tool=item["tool"], depends_on=tuple(item["depends_on"]),

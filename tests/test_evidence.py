@@ -39,8 +39,10 @@ def test_verifier_rejects_a_claim_changed_after_extraction():
 
 def test_filing_passages_have_exact_offsets_and_are_marked_untrusted():
     text = "Overview. The company faces competition and supply risk in several markets."
-    payload = {"accession_no": "0001045810-26-000075", "section_key": "item_1a", "text": text}
-    excerpts = section_evidence(payload, "0001045810", "item_1a")
+    payload = {"sections": [{"section_key": "1A", "text": text,
+                            "citation": {"accession_no": "0001045810-26-000075",
+                                         "section_key": "1A"}}]}
+    excerpts = section_evidence(payload, "0001045810", "1A")
     assert excerpts
     for excerpt in excerpts:
         data = excerpt.payload
