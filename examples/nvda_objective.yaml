@@ -1,0 +1,8 @@
+# Example target objective. The current CLI takes these fields as flags.
+company: NVDA
+objective: >-
+  Analyze revenue growth, operating margins, and principal business risks
+  since FY2022. Compare relevant peers and describe key uncertainties.
+budget:
+  max_tool_calls: 30
+  max_duration_seconds: 300

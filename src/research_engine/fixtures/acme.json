@@ -1,0 +1,28 @@
+{
+  "fixture_version": "1.0",
+  "notice": "SYNTHETIC DATA. ACME and every figure here are invented for offline testing.",
+  "responses": {
+    "search": {
+      "results": [{"ticker": "ACME", "name": "Acme Example Corporation", "company_id": "0000000001"}]
+    },
+    "financials": {
+      "metrics": {
+        "revenue": [
+          {"metric": "revenue", "value": "1200000000", "unit": "USD", "currency": "USD", "period_start": "2026-01-01", "period_end": "2026-03-31", "value_source": "reported", "citation": {"accession_no": "0000000001-26-000001", "form": "10-Q", "filed": "2026-05-01"}},
+          {"metric": "revenue", "value": "1000000000", "unit": "USD", "currency": "USD", "period_start": "2025-10-01", "period_end": "2025-12-31", "value_source": "reported", "citation": {"accession_no": "0000000001-26-000002", "form": "10-K", "filed": "2026-02-01"}}
+        ],
+        "operating_income": [
+          {"metric": "operating_income", "value": "240000000", "unit": "USD", "currency": "USD", "period_start": "2026-01-01", "period_end": "2026-03-31", "value_source": "reported", "citation": {"accession_no": "0000000001-26-000001", "form": "10-Q", "filed": "2026-05-01"}}
+        ]
+      }
+    },
+    "filings": {"items": [{"accession_no": "0000000001-26-000001", "form": "10-Q"}]},
+    "risk_section": {"accession_no": "0000000001-26-000001", "section_key": "item_1a", "text": "Competition and supply risk could affect demand for Acme's products. This is synthetic filing text."},
+    "mdna_section": {"accession_no": "0000000001-26-000001", "section_key": "item_7", "text": "Revenue growth reflected synthetic demand. This is not a real filing."},
+    "segments": {"items": []},
+    "peers": {"items": []},
+    "earnings": {"items": []},
+    "events": {"items": []},
+    "data_notes": {"items": []}
+  }
+}
